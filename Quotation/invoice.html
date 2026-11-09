@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#315747">
+  <title>Créateur de factures - 3MH</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="vendor/pdf-lib.min.js" defer></script>
+  <script src="vendor/html2canvas.min.js" defer></script>
+  <script src="pdf-utils.js" defer></script>
+  <script src="invoice.js" defer></script>
+</head>
+<body>
+  <header class="topbar invoice-topbar">
+    <div class="brand">
+      <img src="3mh_logo.png" alt="Logo 3MH solutions" class="brand-logo">
+      <div>
+        <p class="eyebrow">3MH solutions</p>
+        <h1>Créateur de factures</h1>
+        <p class="muted">Préparez une facture claire et téléchargez-la en PDF.</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <a class="button button-soft" href="index.html">← Soumissions</a>
+      <button class="button button-primary print-button" id="print-invoice" type="button">Télécharger le PDF 3MH <span aria-hidden="true">↓</span></button>
+    </div>
+  </header>
+
+  <main class="workspace invoice-workspace">
+    <section class="editor" aria-label="Éditeur de facture">
+      <nav class="tabs" aria-label="Sections de la facture">
+        <button class="tab is-active" type="button" data-tab="invoice-details" aria-selected="true">Facture et client</button>
+        <button class="tab" type="button" data-tab="invoice-items" aria-selected="false">Articles et prix</button>
+        <button class="tab" type="button" data-tab="invoice-terms" aria-selected="false">Paiement et notes</button>
+      </nav>
+
+      <form id="invoice-form" novalidate>
+        <section class="tab-panel is-active" data-panel="invoice-details">
+          <div class="form-section import-section">
+            <h2>Importer des données</h2>
+            <p class="hint">Importez un PDF 3MH ou une copie JSON de la soumission ou de la facture précédente. Les anciens PDF sans données 3MH intégrées ne peuvent pas être importés.</p>
+            <div class="import-actions">
+              <button class="button button-soft" id="import-quote" type="button">Importer une soumission</button>
+              <button class="button button-soft" id="import-invoice" type="button">Importer une facture précédente</button>
+              <input class="file-input" id="quote-file" type="file" accept=".pdf,.json,application/pdf,application/json" tabindex="-1" aria-hidden="true">
+              <input class="file-input" id="invoice-file" type="file" accept=".pdf,.json,application/pdf,application/json" tabindex="-1" aria-hidden="true">
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h2>Coordonnées de l’entreprise</h2>
+            <div class="field-grid">
+              <label>Nom / entreprise<input id="seller-name" value="3MH solutions" autocomplete="organization" required></label>
+              <label>Adresse / numéro RBQ<input id="seller-address" value="RBQ : 5876-1651-01"></label>
+              <label>Courriel<input id="seller-email" type="email" value="solution3mh@outlook.com" autocomplete="email"></label>
+              <label>Téléphone<input id="seller-phone" value="514-715-2477" autocomplete="tel"></label>
+              <label>NEQ<input id="seller-neq" value="3381180093" inputmode="numeric"></label>
+              <label>Numéro de compte TPS<input id="seller-gst-number" placeholder="À compléter"></label>
+              <label>Numéro de compte TVQ<input id="seller-qst-number" placeholder="À compléter"></label>
+            </div>
+            <p class="hint">Les numéros de compte sont ajoutés à la facture lorsqu’ils sont remplis.</p>
+          </div>
+
+          <div class="form-section">
+            <h2>Détails de la facture</h2>
+            <div class="field-grid">
+              <label>Numéro de facture<input id="invoice-number" required></label>
+              <label>Date de facturation<input id="invoice-date" type="date" required></label>
+              <label>Date d’échéance<input id="due-date" type="date" required></label>
+              <label>Référence (facultatif)<input id="invoice-reference" placeholder="Bon de commande, projet…"></label>
+              <label>Facturé au total après cette facture (%)<input id="invoice-percent" type="text" inputmode="decimal" value="20" required></label>
+            </div>
+            <p class="hint" id="billing-progress-hint">Les lignes représentent le montant total du contrat. La facture demande 20 % par défaut. Après l’importation d’une facture précédente, indiquez le nouveau pourcentage cumulatif : seul le solde de cet acompte sera facturé. Saisissez 100 % pour facturer le contrat complet.</p>
+            <p class="status-message" id="previously-billed-summary" role="status" aria-live="polite"></p>
+          </div>
+
+          <div class="form-section">
+            <h2>Client</h2>
+            <div class="client-tools">
+              <label class="saved-client-field">Clients enregistrés
+                <select id="invoice-saved-clients"><option value="">Choisir un client…</option></select>
+              </label>
+            </div>
+            <p class="hint">La liste de clients est partagée avec le créateur de soumissions.</p>
+            <div class="field-grid">
+              <label>Nom<input id="buyer-name" required autocomplete="name"></label>
+              <label>Adresse<input id="buyer-address" autocomplete="street-address"></label>
+              <label>Courriel<input id="buyer-email" type="email" autocomplete="email"></label>
+              <label>Téléphone<input id="buyer-phone" autocomplete="tel"></label>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="invoice-items" hidden>
+          <div class="form-section">
+            <div class="section-heading">
+              <div>
+                <h2>Articles et services</h2>
+                <p class="hint">Ajoutez les articles facturés. Les montants acceptent la virgule ou le point décimal.</p>
+              </div>
+              <button class="button button-soft" id="add-invoice-item" type="button">＋ Ajouter une ligne</button>
+            </div>
+            <div class="items-wrap">
+              <table class="items-editor invoice-items-editor">
+                <thead><tr><th>Description</th><th>Quantité</th><th>Unité</th><th>Prix unitaire</th><th><span class="sr-only">Action</span></th></tr></thead>
+                <tbody id="invoice-items-list"></tbody>
+              </table>
+            </div>
+            <p class="hint tax-hint">TPS 5 % et TVQ 9,975 % calculées sur le montant facturé.</p>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="invoice-terms" hidden>
+          <div class="form-section">
+            <label class="textarea-label" for="payment-terms">Modalités de paiement</label>
+            <textarea id="payment-terms" rows="5">Paiement dû dans les 30 jours suivant la date de facturation. Paiement accepté par virement Interac ou bancaire.</textarea>
+            <label class="textarea-label" for="invoice-notes">Notes</label>
+            <textarea id="invoice-notes" rows="8" placeholder="Merci de faire affaire avec nous."></textarea>
+          </div>
+        </section>
+      </form>
+
+      <div class="editor-footer">
+        <p class="print-hint">Le PDF 3MH téléchargé contient les données nécessaires pour le réimporter dans l’application.</p>
+        <p id="invoice-status" class="status-message" role="status" aria-live="polite"></p>
+        <button class="button button-soft" id="export-invoice" type="button">Exporter une copie JSON</button>
+        <button class="button button-primary" id="print-invoice-bottom" type="button">Télécharger le PDF 3MH</button>
+      </div>
+    </section>
+
+    <aside class="preview-panel" aria-label="Aperçu de la facture">
+      <div class="preview-heading">
+        <div><p class="eyebrow">Aperçu en direct</p><h2>Votre facture</h2></div>
+        <span class="preview-badge">PDF prêt à imprimer</span>
+      </div>
+      <article id="invoice-preview" class="quotation-preview invoice-preview">
+        <header class="print-document-header">
+          <strong>Créateur de factures - 3MH</strong>
+          <time id="invoice-generation-time"></time>
+        </header>
+      </article>
+    </aside>
+  </main>
+</body>
+</html>

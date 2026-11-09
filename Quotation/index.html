@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#315747">
+  <title>Créateur de soumissions - 3MH</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="vendor/pdf-lib.min.js" defer></script>
+  <script src="vendor/html2canvas.min.js" defer></script>
+  <script src="pdf-utils.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="3mh_logo.png" alt="Logo 3MH solutions" class="brand-logo">
+      <div>
+        <p class="eyebrow">3MH solutions</p>
+        <h1>Créateur de soumissions</h1>
+        <p class="muted">Préparez une proposition claire, à votre image.</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <a class="button button-soft" href="invoice.html">Créer une facture <span aria-hidden="true">↗</span></a>
+      <button class="button button-primary print-button" id="print-quote" type="button">Télécharger le PDF 3MH <span aria-hidden="true">↓</span></button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="editor" aria-label="Éditeur de soumission">
+      <nav class="tabs" aria-label="Sections du formulaire">
+        <button class="tab is-active" type="button" data-tab="details" aria-selected="true">Soumission et client</button>
+        <button class="tab" type="button" data-tab="work" aria-selected="false">Travaux et prix</button>
+        <button class="tab" type="button" data-tab="terms" aria-selected="false">Mandat et conditions</button>
+      </nav>
+
+      <form id="quotation-form" novalidate>
+        <section class="tab-panel is-active" data-panel="details">
+          <div class="form-section">
+            <h2>Coordonnées de l’entreprise</h2>
+            <div class="field-grid">
+              <label>Nom / entreprise<input id="company-name" value="3MH solutions" autocomplete="organization"></label>
+              <label>Adresse<input id="company-address" value="RBQ : 5876-1651-01"></label>
+              <label>Courriel<input id="company-email" type="email" value="solution3mh@outlook.com" autocomplete="email"></label>
+              <label>Téléphone<input id="company-phone" value="514-715-2477" autocomplete="tel"></label>
+              <label>NEQ<input id="company-neq" value="3381180093" inputmode="numeric"></label>
+              <label>Numéro de compte TPS<input id="company-gst-number" placeholder="Facultatif"></label>
+              <label>Numéro de compte TVQ<input id="company-qst-number" placeholder="Facultatif"></label>
+            </div>
+            <p class="hint">Les numéros de compte TPS et TVQ seront affichés seulement s’ils sont remplis.</p>
+          </div>
+
+          <div class="form-section">
+            <h2>Détails de la soumission</h2>
+            <div class="field-grid">
+              <label>Numéro<input id="quote-number" required></label>
+              <label>Date<input id="quote-date" type="date" required></label>
+              <label>Date limite<input id="expiry-date" type="date"></label>
+              <fieldset class="type-field">
+                <legend>Type</legend>
+                <label class="radio-label"><input type="radio" name="quote-type" value="forfaitaire" checked> Forfaitaire</label>
+                <label class="radio-label"><input type="radio" name="quote-type" value="budgétaire"> Budgétaire</label>
+              </fieldset>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h2>Client</h2>
+            <div class="client-tools">
+              <label class="saved-client-field">Clients enregistrés
+                <select id="saved-clients">
+                  <option value="">Choisir un client…</option>
+                </select>
+              </label>
+              <button class="button button-soft" id="save-client" type="button">Enregistrer ce client</button>
+            </div>
+            <p class="hint">Les clients sont conservés dans le navigateur utilisé.</p>
+            <div class="field-grid">
+              <label>Nom<input id="client-name" required autocomplete="name"></label>
+              <label>Adresse<input id="client-address" autocomplete="street-address"></label>
+              <label>Courriel<input id="client-email" type="email" autocomplete="email"></label>
+              <label>Téléphone<input id="client-phone" autocomplete="tel"></label>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="work" hidden>
+          <div class="form-section">
+            <div class="section-heading">
+              <div>
+                <h2>Proposition de travaux</h2>
+                <p class="hint">Les quantités et tarifs acceptent la virgule ou le point comme séparateur décimal.</p>
+              </div>
+              <button class="button button-soft" id="add-item" type="button">＋ Ajouter une ligne</button>
+            </div>
+            <div class="items-wrap">
+              <table class="items-editor">
+                <thead><tr><th>Description</th><th>Quantité</th><th>Unité</th><th>Tarif / unité</th><th><span class="sr-only">Action</span></th></tr></thead>
+                <tbody id="items-list"></tbody>
+              </table>
+            </div>
+            <p class="hint tax-hint">Les taxes sont calculées sur le sous-total : TPS 5 % et TVQ 9,975 % (Québec).</p>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="terms" hidden>
+          <div class="form-section">
+            <label class="textarea-label" for="mandate">Définition du mandat</label>
+            <textarea id="mandate" rows="10"></textarea>
+            <label class="textarea-label" for="exclusions">Exclusions et précisions</label>
+            <textarea id="exclusions" rows="7"></textarea>
+            <label class="textarea-label" for="terms">Conditions</label>
+            <textarea id="terms" rows="9"></textarea>
+          </div>
+        </section>
+      </form>
+
+      <div class="editor-footer">
+        <p class="print-hint">Le PDF 3MH téléchargé contient les données nécessaires pour l’importer dans le créateur de factures.</p>
+        <p id="status-message" class="status-message" role="status" aria-live="polite"></p>
+        <button class="button button-soft" id="export-quote" type="button">Exporter une copie JSON</button>
+        <button class="button button-primary" id="print-quote-bottom" type="button">Télécharger le PDF 3MH</button>
+      </div>
+    </section>
+
+    <aside class="preview-panel" aria-label="Aperçu de la soumission">
+      <div class="preview-heading">
+        <div><p class="eyebrow">Aperçu en direct</p><h2>Votre soumission</h2></div>
+        <span class="preview-badge">PDF prêt à imprimer</span>
+      </div>
+      <article id="quotation-preview" class="quotation-preview">
+        <header class="print-document-header">
+          <strong>Créateur de soumissions - 3MH</strong>
+          <time id="generation-time"></time>
+        </header>
+      </article    </aside>
+  </main>
+</body>
+</html>
